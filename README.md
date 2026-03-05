@@ -1,6 +1,6 @@
 # Workshop – Bygg en frontend mot ett autentiserat API 🏗️
 
-I den här workshopen bygger du ett React-frontend som kommunicerar [med ett befintligt Express-API](https://github.com/chasacademy-sandra-larsson/lektion_2026_03_03_middleware_auth) som innehåller resurserna `users` och `posts` och relationen att en user kan ha flera inlägg (one-to-many). Express-API:et innehåller även registrering och inloggning samt aktorisering av skyddade routes med JWT. 
+I den här workshopen bygger du ett React-frontend som kommunicerar [med ett befintligt Express-API](https://github.com/chasacademy-sandra-larsson/lektion_2026_03_03_middleware_auth) som innehåller resurserna `users` och `posts` och relationen att en user kan ha flera inlägg (one-to-many). Express-API:et innehåller även registrering och inloggning samt aktorisering av skyddade routes med JWT.
 
 Fokus ligger på tre saker:
 
@@ -34,7 +34,6 @@ Installera React Router 7 och Tailwind (valfritt):
 npm install react-router
 ```
 
-
 ## Steg 2 – Sätt upp routing 🗺️
 
 Skapa filen `src/routes.tsx`. Här samlar vi alla routes på ett ställe.
@@ -54,7 +53,6 @@ export default routes;
 ```
 
 Glöm inte att uppdatera `src/App.tsx` till att använda routern:
-
 
 ---
 
@@ -85,32 +83,31 @@ Det är en fördel att returnera användarobjektet, så slipper man inte göra e
 Skapa filen `src/pages/SignUpPage.tsx` och skapa ett formulär som gör en fetch med POST för att skickar `email` och `password` till servern
 
 ```tsx
+const API = "http://localhost:3000";
 
-  const API = "http://localhost:3000";
+async function handleSubmit(e: React.FormEvent) {
+  e.preventDefault();
+  setError("");
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
+  const res = await fetch(`${API}/auth/signup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
 
-    const res = await fetch(`${API}/auth/signup`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
+  const data = await res.json();
 
-    const data = await res.json();
-
-    if (!res.ok) {
-      setError(data.error ?? "Något gick fel");
-      return;
-    }
-
-    // Spara token och användare i localStorage
-    localStorage.setItem("token", data.token);
-    localStorage.setItem("user", JSON.stringify(data.user));
-
-    navigate("/posts"); // importera useNavigate från React Router
+  if (!res.ok) {
+    setError(data.error ?? "Något gick fel");
+    return;
   }
+
+  // Spara token och användare i localStorage
+  localStorage.setItem("token", data.token);
+  localStorage.setItem("user", JSON.stringify(data.user));
+
+  navigate("/posts"); // importera useNavigate från React Router
+}
 ```
 
 ### Skapa SignInPage 🔑
@@ -126,7 +123,6 @@ Glöm inte att lägga till sidorna i `src/routes.tsx`.
 ## Steg 4 – Visa inlägg (öppen route) 📰
 
 Skapa `src/pages/PostsPage.tsx`. Den här sidan hämtar alla inlägg utan token — det är en öppen endpoint. Anropa `/posts` med fetch (GET-request) och rendera listan med alla inlägg.
-
 
 Använd samma interface från drizzle-schemat i backend.
 
@@ -190,37 +186,35 @@ Testa att gå till `/posts/new` utan att vara inloggad — du ska hamna på `/si
 
 Nu ska ni anropa ett skyddat API-anrop för att skapa ett inlägg som inloggad användare. Tokenet skickas med i `Authorization`-headern:
 
-
 Skapa `src/pages/CreatePostPage.tsx` och använd dig av följande fetch
 
 ```tsx
+const API = "http://localhost:3000";
 
-  const API = "http://localhost:3000";
+const token = localStorage.getItem("token");
 
-  const token = localStorage.getItem("token");
+async function handleSubmit(e: React.FormEvent) {
+  e.preventDefault();
+  setError("");
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
+  const res = await fetch(`${API}/posts`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ title, content }),
+  });
 
-    const res = await fetch(`${API}/posts`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ title, content }),
-    });
+  const data = await res.json();
 
-    const data = await res.json();
-
-    if (!res.ok) {
-      setError(data.error ?? "Något gick fel");
-      return;
-    }
-
-    navigate("/posts");
+  if (!res.ok) {
+    setError(data.error ?? "Något gick fel");
+    return;
   }
+
+  navigate("/posts");
+}
 ```
 
 Uppdatera `posts/new`-routen i `src/routes.tsx` att använda `<CreatePostPage />`.
@@ -267,16 +261,21 @@ Exempel på att visa redigera/ta bort-knappar bara för inläggets ägare:
 const user = JSON.parse(localStorage.getItem("user") ?? "null");
 
 // I listan:
-{user?.id === post.author.id && (
-  <div className="flex gap-2 mt-3">
-    <Link to={`/posts/${post.id}/edit`} className="text-sm text-indigo-600">
-      Redigera
-    </Link>
-    <button onClick={() => handleDelete(post.id)} className="text-sm text-red-500">
-      Ta bort
-    </button>
-  </div>
-)}
+{
+  user?.id === post.author.id && (
+    <div className="flex gap-2 mt-3">
+      <Link to={`/posts/${post.id}/edit`} className="text-sm text-indigo-600">
+        Redigera
+      </Link>
+      <button
+        onClick={() => handleDelete(post.id)}
+        className="text-sm text-red-500"
+      >
+        Ta bort
+      </button>
+    </div>
+  );
+}
 ```
 
 ### Logga ut 👋
@@ -292,7 +291,6 @@ window.location.reload();
 ---
 
 ## Klart! 🎉
-
 
 ## Extrauppgifter 🌟
 
